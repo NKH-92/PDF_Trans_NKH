@@ -1,0 +1,14 @@
+
+{
+  "supported_models": [
+    "gemini-2.5-pro",
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite"
+  ],
+  "model_descriptions": {
+    "gemini-2.5-pro": "Pro (최고 품질): 가장 완벽하고 정확한 번역",
+    "gemini-2.5-flash": "Flash (권장): 품질과 속도의 완벽한 균형",
+    "gemini-2.5-flash-lite": "Flash-Lite (고속): 신속한 초벌 번역에 최적"
+  },
+  "api_key_help_url": "https://aistudio.google.com/app/apikey"
+}

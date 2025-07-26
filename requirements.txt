@@ -1,0 +1,25 @@
+
+# 이 파일은 'pip install -r requirements.txt' 명령어로 프로젝트에 필요한 모든 라이브러리를 한 번에 설치할 수 있게 해줍니다.
+
+# 핵심 번역 엔진
+# babeldoc>=0.4.16
+
+# Google Gemini API 통신용 라이브러리
+google-generativeai>=0.5.0
+
+# 현대적인 GUI 구현을 위한 라이브러리
+customtkinter>=5.2.2
+
+# 로컬 브릿지 서버 구현을 위한 웹 프레임워크
+Flask>=3.0.0
+
+# Python 스크립트를 .exe 파일로 빌드하기 위한 도구
+PyInstaller>=6.0.0
+
+# (선택사항) API 키를 안전하게 저장하기 위한 라이브러리
+keyring>=25.0.0
+cryptography>=42.0.0
+
+# customtkinter이 내부적으로 사용하는 이미지 처리 라이브러리
+Pillow>=10.0.0
+darkdetect>=0.8.0

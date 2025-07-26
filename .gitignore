@@ -1,0 +1,25 @@
+# PyInstaller build artifacts
+dist/
+build/
+*.spec
+
+# Python cache and bytecode
+__pycache__/
+*.pyc
+
+# Environment variables / sensitive data
+API.env
+
+# Dependency management files
+uv.lock
+node_modules/
+package-lock.json
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo

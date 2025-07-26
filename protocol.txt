@@ -1,0 +1,698 @@
+🎯 BabelDOC + Gemini 통합 최종 개발 계획서 (완성본)
+
+작성자: 남광현현
+문서 목표: 이 문서는 단순한 계획을 넘어, 프로젝트의 철학, 아키텍처, 상세 구현, 테스트, 배포까지 모든 단계를 망라하는 실행 가능한 기술 청사진(Technical Blueprint)을 제공하는 것을 목표로 합니다.
+
+1. 프로젝트 개요 (Project Overview)
+1.1. 목표
+기존의 BabelDOC 번역 엔진에 Google의 차세대 언어 모델인 gemini-2.5 시리즈 API를 완벽하게 통합합니다. 이를 통해, 온라인 번역기 사용 시 발생하는 레이아웃 깨짐 현상과 기계적인 번역 품질의 한계를 모두 극복하고, 원본 문서의 시각적 구조와 의미적 뉘앙스를 모두 보존하는 최고 수준의 독립 실행형(Standalone) 포터블 PDF 번역기를 개발하는 것을 최종 목표로 삼습니다.
+1.2. 핵심 가치
+●	완벽한 형식 보존 (Flawless Layout Preservation): 단순 텍스트 추출 방식이 아닌, BabelDOC의 독자적인 렌더링 엔진을 활용하여 표, 다단(multi-column) 구조, 복잡한 그래프, 이미지 및 각주 위치까지 원본 PDF의 모든 시각적 요소를 완벽하게 유지합니다. 사용자는 번역 후 깨진 표나 이미지 위치를 수정하는 데 시간을 낭비할 필요가 없습니다.
+●	최고 수준의 번역 품질 (State-of-the-Art Translation Quality): 현존 최고 성능의 gemini-2.5-pro 모델을 필두로, 사용자가 목적(품질, 속도, 비용)에 따라 최적의 모델을 선택할 수 있는 옵션을 제공합니다. 이는 단순 직역을 넘어, 문맥을 깊이 이해하고 전문 용어까지 정확하게 번역하는 전문가 수준의 결과물을 보장합니다.
+●	궁극의 사용 편의성 (Ultimate User Experience): 복잡한 설치 과정이나 Python, 라이브러리 등 사전 지식이 전혀 필요 없는 원클릭 실행 포터블 EXE 파일을 제공합니다. USB 메모리 등에 담아 어떤 PC에서든 즉시 사용할 수 있으며, 직관적인 GUI를 통해 누구나 손쉽게 고품질 번역을 경험할 수 있습니다.
+●	안정성 및 확장성 (Robustness & Scalability): 검증된 BabelDOC의 핵심 로직은 그대로 유지하면서, '브릿지' 패턴을 통해 Gemini API를 유연하게 연동합니다. 이 아키텍처는 향후 Google이 새로운 모델을 출시하거나, 다른 AI API를 추가해야 할 경우에도 최소한의 코드 수정으로 신속하게 대응할 수 있는 높은 확장성을 제공합니다.
+1.3. 최종 결과물
+●	PDF번역기_남광현_Test.exe: 모든 의존성이 포함된 단일 실행 파일입니다. .NET, Java 등 별도의 런타임 설치 없이 Windows 환경이라면 어디서든 즉시 실행 가능하며, 오프라인 번역을 위한 BabelDOC의 필수 에셋(폰트 등)이 내장되어 있습니다.
+●	config.json: 애플리케이션의 핵심 설정을 담고 있는 외부 구성 파일입니다. 코드를 전혀 모르는 사용자도 메모장으로 이 파일을 열어 지원 모델 목록을 수정하거나, 모델 설명을 변경하는 등 손쉬운 커스터마이징이 가능합니다.
+●	README.md: 단순한 설명서를 넘어, 프로젝트의 모든 것을 담은 종합 가이드입니다. 포함될 내용:
+○	사용자 매뉴얼: 스크린샷을 포함한 단계별 사용법, 각 기능 설명, API 키 발급 방법.
+○	문제 해결(FAQ): '번역이 안 돼요', 'API 키 오류가 나요' 등 흔히 발생하는 문제와 해결 방법.
+○	개발자 가이드: 소스 코드 빌드 방법, 디렉토리 구조 설명, 기여(Contribute) 방법 안내.
+●	전체 소스 코드: GitHub 리포지토리를 통해 모든 소스 코드를 공개하여 투명성을 확보하고, 커뮤니티의 참여와 발전을 유도합니다.
+2. 시스템 아키텍처 (System Architecture)
+2.1. 핵심 전략: OpenAI 호환 브릿지 (OpenAI-Compatible Bridge)
+본 프로젝트의 아키텍처는 안정성, 유지보수성, 확장성이라는 세 가지 원칙에 기반합니다. BabelDOC의 기존 코드베이스를 직접 수정하여 Gemini SDK를 통합하는 대신, 'Gemini-to-OpenAI 브릿지' 라는 로컬 프록시 서버를 구현하는 방식을 채택합니다. 이는 소프트웨어 공학의 '어댑터 패턴(Adapter Pattern)'을 응용한 것으로, 서로 다른 인터페이스를 가진 두 시스템을 매끄럽게 연결하는 가장 효율적인 방법입니다.
+●	상세 동작 원리 (Step-by-Step Workflow):
+1.	[사용자] GUI에서 PDF 파일을 선택하고 '번역 시작' 버튼을 클릭합니다.
+2.	[GUI: main_window.py] 입력값(파일 경로, API 키 등)을 검증하고, 백그라운드 스레드를 생성하여 babeldoc의 메인 로직을 호출합니다. (GUI의 응답성을 유지하기 위함)
+3.	[메인 로직: main.py] --gemini 플래그가 활성화된 것을 확인하고, gemini_bridge.py의 start_gemini_bridge 함수를 호출합니다.
+4.	[브릿지: gemini_bridge.py] 사용 가능한 포트(예: 51234)를 동적으로 찾아 Flask 기반의 경량 웹 서버를 사용자 PC 내부(127.0.0.1)에서만 실행시킵니다. 이 서버는 외부에서 접근할 수 없습니다.
+5.	[메인 로직: main.py] 브릿지 서버의 주소(http://127.0.0.1:51234)를 받아, BabelDOC의 OpenAI 관련 인수인 --openai-base-url 값을 이 주소로 덮어씁니다.
+6.	[BabelDOC 코어 엔진] 번역이 필요한 텍스트를 OpenAI API 형식의 요청으로 만들어 http://127.0.0.1:51234/v1/chat/completions로 전송합니다.
+7.	[브릿지] 이 요청을 받은 후, 내용을 Gemini API가 이해할 수 있는 형식으로 변환합니다.
+8.	[브릿지] 변환된 요청을 인터넷을 통해 실제 Google의 Gemini API 서버(https://generativelanguage.googleapis.com)로 전송합니다.
+9.	[브릿지] Google로부터 받은 응답을 다시 BabelDOC이 이해할 수 있는 OpenAI API 형식으로 재변환합니다.
+10.	[BabelDOC 코어 엔진] 브릿지로부터 받은 번역된 텍스트를 사용하여 최종 결과물 PDF 파일을 생성합니다.
+11.	[프로세스 종료] 번역이 완료되거나 프로그램이 종료되면, 메인 프로세스와 함께 백그라운드에서 실행되던 브릿지 서버 스레드도 자동으로 소멸합니다.
+●	기대 효과 (Extended Benefits):
+○	안정성: 검증된 BabelDOC의 핵심 번역 및 렌더링 로직을 전혀 건드리지 않으므로, 사이드 이펙트 발생 가능성을 원천적으로 차단합니다.
+○	개발 효율: Gemini API 연동과 관련된 모든 복잡성을 gemini_bridge.py 파일 하나에 응집시켜, 문제 발생 시 추적 및 수정이 매우 용이합니다.
+○	독립성 및 디버깅 용이성: 브릿지 서버는 독립적으로 테스트할 수 있습니다. 예를 들어, curl과 같은 도구로 로컬 브릿지 서버에 직접 요청을 보내 Gemini API 연동 부분만 따로 디버깅하는 것이 가능합니다.
+○	미래 호환성: 만약 미래에 Anthropic의 Claude나 다른 AI 모델을 추가하고 싶다면, claude_bridge.py를 새로 만드는 것만으로 손쉽게 기능을 확장할 수 있습니다.
+3. 상세 구현 계획 (Detailed Implementation Plan)
+3.1. 디렉토리 구조
+BabelDOC-Gemini/
+├── babeldoc/                  # 기존 BabelDOC 소스코드 (또는 서브모듈)
+│   ├── translator/
+│   │   └── gemini_bridge.py   # [신규] Gemini API와 BabelDOC을 연결하는 통역사 역할
+│   └── main.py              # [수정] --gemini 플래그 처리 및 브릿지 실행 로직 추가
+├── gui/
+│   └── main_window.py       # [신규] 사용자가 상호작용할 메인 애플리케이션 창
+├── assets/
+│   └── icon.ico             #      애플리케이션 아이콘 파일
+├── build_exe.py             # [신규] 모든 소스와 의존성을 묶어 .exe 파일로 만드는 빌드 스크립트
+├── config.json              # [신규] 코드 수정 없이 모델 목록 등을 변경할 수 있는 설정 파일
+└── requirements.txt         # [신규] 프로젝트에 필요한 모든 파이썬 라이브러리 목록
+
+3.2. 외부 설정 파일 (config.json)
+하드코딩을 피하고 유연성을 극대화하기 위해 외부 설정 파일을 사용합니다. 이는 코드와 설정을 분리하는 좋은 개발 관행(Best Practice)입니다.
+{
+  "supported_models": [
+    "gemini-2.5-pro",
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite"
+  ],
+  "model_descriptions": {
+    "gemini-2.5-pro": "Pro (최고 품질): 가장 완벽하고 정확한 번역",
+    "gemini-2.5-flash": "Flash (권장): 품질과 속도의 완벽한 균형",
+    "gemini-2.5-flash-lite": "Flash-Lite (고속): 신속한 초벌 번역에 최적"
+  },
+  "api_key_help_url": "https://aistudio.google.com/app/apikey"
+}
+
+3.3. Gemini-OpenAI 브릿지 (babeldoc/translator/gemini_bridge.py)
+이 파일은 프로젝트의 핵심 기술이 집약된 부분입니다. Flask를 이용한 경량 웹서버로, 상세한 오류 처리와 API 사용량 제한(Rate Limiting) 로직을 포함합니다.
+# babeldoc/translator/gemini_bridge.py
+
+import google.generativeai as genai
+from google.api_core import exceptions as google_exceptions
+from flask import Flask, request, jsonify
+import threading
+import time
+import logging
+import socket
+from typing import Tuple
+
+# 로깅 기본 설정: 문제 발생 시 원인 추적을 위한 상세 로그를 기록합니다.
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - [GeminiBridge] - %(message)s')
+
+class GeminiOpenAIBridge:
+    """
+    Gemini API를 OpenAI ChatCompletion API와 호환되는 로컬 서버로 래핑합니다.
+    QPS 제한, 상세 오류 처리 기능이 포함되어 있습니다.
+    """
+    def __init__(self, api_key: str, model: str, qps: float):
+        self.api_key = api_key
+        self.model = model
+        self.qps = qps
+        self.last_request_time = 0
+        self.logger = logging.getLogger(__name__)
+
+        try:
+            # Google Gemini 클라이언트를 초기화합니다.
+            genai.configure(api_key=self.api_key)
+            self.client = genai.GenerativeModel(self.model)
+            self.logger.info(f"Gemini 클라이언트가 '{self.model}' 모델로 성공적으로 초기화되었습니다.")
+        except Exception as e:
+            self.logger.error(f"Gemini 클라이언트 초기화 실패: {e}")
+            raise
+
+        self.app = Flask(__name__)
+        self.setup_routes()
+
+    def setup_routes(self):
+        """OpenAI 호환 API 엔드포인트를 설정합니다. BabelDOC은 이 주소로 요청을 보냅니다."""
+        @self.app.route('/v1/chat/completions', methods=['POST'])
+        def chat_completions():
+            return self.handle_chat_completions()
+
+    def handle_chat_completions(self):
+        """OpenAI ChatCompletion API 요청을 처리하고 Gemini API로 변환하여 응답합니다."""
+        try:
+            # API 과다 사용을 방지하기 위해 QPS 제한을 먼저 적용합니다.
+            self.apply_rate_limit()
+
+            data = request.json
+            messages = data.get('messages', [])
+            
+            # BabelDOC이 보낸 메시지 목록에서 실제 번역할 내용을 추출합니다.
+            user_message = ""
+            for msg in reversed(messages):
+                if msg.get('role') == 'user':
+                    user_message = msg.get('content', '')
+                    break
+            
+            if not user_message:
+                self.logger.warning("요청에서 사용자 메시지를 찾을 수 없습니다.")
+                return jsonify({"error": "No user message found"}), 400
+
+            self.logger.info(f"'{self.model}' 모델로 번역 요청을 보냅니다. (내용 일부: {user_message[:50]}...)")
+            
+            # Gemini API 호출 및 발생 가능한 오류들을 상세하게 처리합니다.
+            try:
+                response = self.client.generate_content(user_message)
+                translated_text = response.text
+                
+                # Gemini 응답을 BabelDOC이 이해할 수 있는 OpenAI 형식으로 변환합니다.
+                openai_response = self.format_as_openai_response(translated_text, user_message)
+                self.logger.info("번역 성공. OpenAI 형식으로 응답을 반환합니다.")
+                return jsonify(openai_response)
+
+            # API 키가 잘못되었을 경우
+            except google_exceptions.PermissionDenied as e:
+                self.logger.error(f"Gemini API 권한 오류: {e}")
+                return jsonify({"error": {"message": "잘못된 Gemini API 키입니다. 키를 확인해주세요.", "type": "invalid_request_error", "code": "invalid_api_key"}}), 401
+            # API 사용량 한도를 초과했을 경우
+            except google_exceptions.ResourceExhausted as e:
+                self.logger.error(f"Gemini API 할당량 초과: {e}")
+                return jsonify({"error": {"message": "API 할당량을 초과했습니다. 잠시 후 다시 시도하거나 Google Cloud 콘솔에서 할당량을 확인하세요.", "type": "insufficient_quota", "code": "quota_exceeded"}}), 429
+            # 그 외 모든 Gemini API 관련 오류
+            except Exception as e:
+                self.logger.error(f"Gemini API 호출 중 알 수 없는 오류 발생: {e}")
+                return jsonify({"error": {"message": f"번역 실패: {str(e)}", "type": "api_error"}}), 500
+
+        # 요청 처리 과정 자체에서 발생한 오류
+        except Exception as e:
+            self.logger.error(f"요청 처리 중 내부 오류 발생: {e}")
+            return jsonify({"error": {"message": f"Request processing failed: {str(e)}", "type": "internal_error"}}), 500
+
+    def apply_rate_limit(self):
+        """QPS(초당 요청 수) 제한을 적용하여 API 서버에 과도한 부하를 주지 않도록 합니다."""
+        current_time = time.time()
+        time_since_last = current_time - self.last_request_time
+        min_interval = 1.0 / self.qps if self.qps > 0 else 0
+        
+        if time_since_last < min_interval:
+            sleep_time = min_interval - time_since_last
+            self.logger.info(f"QPS 제한({self.qps}/s)을 위해 {sleep_time:.2f}초 대기합니다.")
+            time.sleep(sleep_time)
+        
+        self.last_request_time = time.time()
+
+    def format_as_openai_response(self, translated_text: str, original_text: str) -> dict:
+        """Gemini 응답을 OpenAI ChatCompletion 응답 형식으로 변환합니다."""
+        return {
+            "id": f"chatcmpl-{int(time.time())}",
+            "object": "chat.completion",
+            "created": int(time.time()),
+            "model": self.model,
+            "choices": [{
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": translated_text
+                },
+                "finish_reason": "stop"
+            }],
+            "usage": {
+                "prompt_tokens": len(original_text.split()),
+                "completion_tokens": len(translated_text.split()),
+                "total_tokens": len(original_text.split()) + len(translated_text.split())
+            }
+        }
+
+    def start_server(self, host: str, port: int):
+        """Flask 서버를 시작합니다."""
+        self.logger.info(f"Gemini-OpenAI 브릿지 서버를 {host}:{port}에서 시작합니다.")
+        # Werkzeug의 기본 로거 비활성화하여 GUI 로그창에 중복 로그가 찍히는 것을 방지합니다.
+        log = logging.getLogger('werkzeug')
+        log.setLevel(logging.ERROR)
+        self.app.run(host=host, port=port, debug=False, threaded=True)
+
+def find_free_port() -> int:
+    """다른 프로그램과 충돌하지 않도록 사용 가능한 포트를 동적으로 찾습니다."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('', 0))
+        return s.getsockname()[1]
+
+def start_gemini_bridge(api_key: str, model: str, qps: float) -> Tuple[str, int]:
+    """
+    백그라운드 스레드에서 Gemini 브릿지 서버를 시작하고,
+    서버의 base_url과 포트 번호를 반환합니다.
+    """
+    port = find_free_port()
+    host = '127.0.0.1'
+    
+    try:
+        bridge = GeminiOpenAIBridge(api_key, model, qps)
+        server_thread = threading.Thread(
+            target=bridge.start_server, 
+            args=(host, port),
+            daemon=True # 메인 프로그램이 종료되면 이 스레드도 자동으로 종료됩니다.
+        )
+        server_thread.start()
+        time.sleep(2) # 서버가 완전히 시작될 때까지 잠시 대기합니다.
+        
+        base_url = f"http://{host}:{port}"
+        logging.info(f"브릿지 서버가 {base_url} 에서 성공적으로 시작되었습니다.")
+        return base_url, port
+    except Exception as e:
+        logging.error(f"브릿지 서버 시작에 실패했습니다: {e}")
+        raise
+
+3.4. 메인 로직 수정 (babeldoc/main.py)
+기존 BabelDOC의 명령줄 인터페이스(CLI)를 확장하여 --gemini 관련 옵션을 추가하고, 이 옵션이 사용될 때 브릿지 서버를 구동하도록 수정합니다.
+# babeldoc/main.py (기존 파일에 아래 내용을 추가/수정)
+
+import argparse
+import sys
+# ... (기존 import) ...
+from .translator.gemini_bridge import start_gemini_bridge # 브릿지 시작 함수를 import 합니다.
+
+def add_gemini_arguments(parser):
+    """Gemini API 관련 명령줄 인수를 ArgumentParser에 추가합니다."""
+    gemini_group = parser.add_argument_group(
+        'Gemini API Options',
+        'Use Google Gemini API via a local OpenAI-compatible bridge.'
+    )
+    
+    gemini_group.add_argument(
+        '--gemini',
+        action='store_true',
+        help='[추천] Google Gemini API를 사용하여 번역합니다. 이 옵션을 사용하면 OpenAI 관련 옵션들이 자동으로 설정됩니다.'
+    )
+    
+    gemini_group.add_argument(
+        '--gemini-model',
+        default='gemini-2.5-flash', # 사용자가 가장 선호할 것으로 예상되는 'flash' 모델을 기본값으로 설정
+        help='사용할 Gemini 모델 (기본값: gemini-2.5-flash)'
+    )
+    
+    gemini_group.add_argument(
+        '--gemini-api-key',
+        help='Google Gemini 서비스의 API 키. GUI에서는 입력 필드를 통해 받습니다.'
+    )
+    
+    gemini_group.add_argument(
+        '--gemini-qps',
+        type=float,
+        default=0.25,  # Google Gemini 무료 티어의 분당 15회 요청(15 RPM) 제한을 준수하기 위한 기본값
+        help='Gemini API의 QPS(초당 요청 수) 제한 (기본값: 0.25)'
+    )
+
+def main():
+    parser = argparse.ArgumentParser(description="Translate PDF files while maintaining the original layout.")
+    # ... (기존 BabelDOC 인수 추가 로직) ...
+    add_gemini_arguments(parser) # Gemini 관련 인수를 파서에 등록합니다.
+    
+    args = parser.parse_args()
+    
+    # --- Gemini 브릿지 실행 로직 ---
+    # 사용자가 --gemini 옵션을 주었을 경우에만 이 블록이 실행됩니다.
+    if args.gemini:
+        print("🚀 Gemini 모드가 활성화되었습니다. 로컬 브릿지 서버를 시작합니다...")
+        
+        if not args.gemini_api_key:
+            print("❌ 오류: --gemini 옵션을 사용하려면 --gemini-api-key를 반드시 제공해야 합니다.", file=sys.stderr)
+            sys.exit(1)
+        
+        try:
+            # 백그라운드에서 브릿지 서버를 시작하고, 통신에 사용할 주소와 포트를 받아옵니다.
+            base_url, port = start_gemini_bridge(
+                api_key=args.gemini_api_key, 
+                model=args.gemini_model, 
+                qps=args.gemini_qps
+            )
+            
+            # BabelDOC의 OpenAI 관련 설정을 브릿지 서버에 맞게 동적으로 덮어씁니다.
+            # 이로써 BabelDOC은 자신이 Gemini가 아닌 OpenAI와 통신한다고 '착각'하게 됩니다.
+            args.openai = True
+            args.openai_base_url = base_url
+            args.openai_api_key = "DUMMY_KEY_FOR_BRIDGE" # 브릿지는 이 키를 검증하지 않으므로 아무 값이나 상관없습니다.
+            args.openai_model = args.gemini_model # 모델 이름은 그대로 전달하여 일관성을 유지합니다.
+            args.qps = args.gemini_qps # QPS 설정도 동기화합니다.
+            
+            print(f"✅ Gemini 브릿지 서버가 {base_url} 에서 성공적으로 시작되었습니다.")
+            print("BabelDOC이 이 로컬 서버를 통해 번역을 진행합니다.")
+
+        except Exception as e:
+            print(f"❌ Gemini 브릿지 서버 시작에 실패했습니다: {e}", file=sys.stderr)
+            sys.exit(1)
+            
+    # ... (기존 BabelDOC 메인 로직 계속) ...
+    # 예: run_translation_workflow(args) 와 같은 함수 호출
+
+3.5. GUI 개발 (gui/main_window.py)
+customtkinter를 사용하고, 실시간 로그 및 진행률 표시, 프로그램 명칭 변경 등 모든 제안 사항을 반영한 최종 GUI 코드입니다.
+# gui/main_window.py
+
+import customtkinter as ctk
+from tkinter import filedialog, messagebox
+import threading
+import subprocess
+import json
+import os
+import sys
+import webbrowser
+from pathlib import Path
+import re  # 진행률 파싱을 위한 정규표현식 모듈
+
+# PyInstaller로 빌드된 .exe 환경과 일반 .py 실행 환경 모두에서 파일 경로를 올바르게 찾기 위한 함수
+def get_base_path():
+    if getattr(sys, 'frozen', False):
+        return Path(sys._MEIPASS)
+    return Path(__file__).parent.parent
+
+BASE_PATH = get_base_path()
+CONFIG_FILE = BASE_PATH / "config.json"
+APP_NAME = "PDF번역기_남광현_Test" # 프로그램 이름 변수화
+
+class PDFTranslatorGUI:
+    def __init__(self):
+        # --- 기본 설정 ---
+        ctk.set_appearance_mode("System")
+        ctk.set_default_color_theme("blue")
+        
+        self.root = ctk.CTk()
+        self.root.title(APP_NAME)
+        self.root.geometry("850x750")
+        self.root.minsize(800, 700)
+
+        # --- 설정 로드 ---
+        self.config = self.load_config()
+
+        # --- UI 상태 변수 선언 ---
+        self.file_path = ctk.StringVar()
+        self.target_lang = ctk.StringVar(value="ko")
+        self.output_format = ctk.StringVar(value="both")
+        self.api_key = ctk.StringVar()
+        self.ai_model = ctk.StringVar(value=self.config["supported_models"][1])
+
+        self.is_translating = False
+        
+        # --- 위젯 생성 ---
+        self.create_widgets()
+
+    def load_config(self):
+        """config.json 파일에서 설정을 로드합니다."""
+        try:
+            with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            messagebox.showerror("치명적 오류", f"설정 파일({CONFIG_FILE})을 찾을 수 없습니다. 프로그램을 종료합니다.")
+            sys.exit(1)
+        except json.JSONDecodeError:
+            messagebox.showerror("치명적 오류", f"설정 파일({CONFIG_FILE})의 형식이 올바르지 않습니다. 프로그램을 종료합니다.")
+            sys.exit(1)
+
+    def create_widgets(self):
+        """애플리케이션의 모든 UI 요소를 생성하고 배치합니다."""
+        main_frame = ctk.CTkFrame(self.root)
+        main_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        
+        main_frame.grid_columnconfigure(0, weight=1)
+        main_frame.grid_rowconfigure(5, weight=1)
+
+        # 1. 제목
+        ctk.CTkLabel(main_frame, text="🎯 PDF 번역기 (BabelDOC + Gemini)", font=ctk.CTkFont(size=24, weight="bold")).grid(row=0, column=0, pady=(10, 20))
+
+        # 2. 파일 선택
+        self.create_file_selection(main_frame).grid(row=1, column=0, sticky="ew", padx=20, pady=10)
+        
+        # 3. 설정 (언어, 출력, 모델)
+        self.create_settings_frame(main_frame).grid(row=2, column=0, sticky="ew", padx=20, pady=10)
+
+        # 4. API 키 입력
+        self.create_api_key_input(main_frame).grid(row=3, column=0, sticky="ew", padx=20, pady=10)
+
+        # 5. 번역 버튼
+        self.translate_btn = ctk.CTkButton(main_frame, text="🚀 번역 시작하기", command=self.start_translation, height=50, font=ctk.CTkFont(size=16, weight="bold"))
+        self.translate_btn.grid(row=4, column=0, pady=20, padx=20, sticky="ew")
+
+        # 6. 진행 상황 및 로그
+        self.create_progress_section(main_frame).grid(row=5, column=0, sticky="nsew", padx=20, pady=10)
+
+        # 7. 푸터 (프로그램명 표시)
+        footer_label = ctk.CTkLabel(main_frame, text=APP_NAME, font=ctk.CTkFont(size=10), text_color="gray")
+        footer_label.grid(row=6, column=0, pady=(10, 0), sticky="e")
+
+    def create_section_frame(self, parent, title):
+        frame = ctk.CTkFrame(parent)
+        ctk.CTkLabel(frame, text=title, font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(10, 5), anchor="w", padx=20)
+        return frame
+
+    def create_file_selection(self, parent):
+        frame = self.create_section_frame(parent, "📂 1. 번역할 PDF 파일 선택")
+        file_frame = ctk.CTkFrame(frame, fg_color="transparent")
+        file_frame.pack(fill="x", padx=20, pady=(5, 15))
+        file_frame.grid_columnconfigure(0, weight=1)
+        file_entry = ctk.CTkEntry(file_frame, textvariable=self.file_path, placeholder_text="여기를 클릭하여 파일을 선택하세요...")
+        file_entry.grid(row=0, column=0, sticky="ew", padx=(0, 10))
+        browse_btn = ctk.CTkButton(file_frame, text="찾아보기", command=self.browse_file, width=100)
+        browse_btn.grid(row=0, column=1)
+        return frame
+
+    def create_settings_frame(self, parent):
+        frame = self.create_section_frame(parent, "⚙️ 2. 번역 옵션 설정")
+        frame.columnconfigure((0,1), weight=1)
+        left_frame = ctk.CTkFrame(frame, fg_color="transparent")
+        left_frame.grid(row=0, column=0, padx=20, pady=5, sticky="ew")
+        ctk.CTkLabel(left_frame, text="번역 언어 (대상)").pack(anchor="w")
+        ctk.CTkComboBox(left_frame, values=["ko (한국어)", "en (영어)", "ja (일본어)", "zh (중국어)"], variable=self.target_lang).pack(fill="x")
+        ctk.CTkLabel(left_frame, text="출력 형식").pack(anchor="w", pady=(10,0))
+        ctk.CTkRadioButton(left_frame, text="번역본만", variable=self.output_format, value="mono").pack(anchor="w")
+        ctk.CTkRadioButton(left_frame, text="이중언어본만", variable=self.output_format, value="dual").pack(anchor="w")
+        ctk.CTkRadioButton(left_frame, text="둘 다 생성", variable=self.output_format, value="both").pack(anchor="w")
+        right_frame = ctk.CTkFrame(frame, fg_color="transparent")
+        right_frame.grid(row=0, column=1, padx=20, pady=5, sticky="ew")
+        ctk.CTkLabel(right_frame, text="AI 모델 선택").pack(anchor="w")
+        for model in self.config["supported_models"]:
+            desc = self.config["model_descriptions"].get(model, "")
+            ctk.CTkRadioButton(right_frame, text=f"{model}\n({desc})", variable=self.ai_model, value=model).pack(anchor="w", pady=2)
+        return frame
+
+    def create_api_key_input(self, parent):
+        frame = self.create_section_frame(parent, "🔑 3. Google Gemini API 키")
+        frame.columnconfigure(0, weight=1)
+        api_entry = ctk.CTkEntry(frame, textvariable=self.api_key, placeholder_text="API 키를 여기에 붙여넣으세요...", show="*")
+        api_entry.grid(row=0, column=0, padx=20, pady=5, sticky="ew")
+        help_frame = ctk.CTkFrame(frame, fg_color="transparent")
+        help_frame.grid(row=0, column=1, padx=(0, 20))
+        help_btn = ctk.CTkButton(help_frame, text="API 키 발급받기", command=self.open_api_key_url, width=120)
+        help_btn.pack()
+        return frame
+
+    def create_progress_section(self, parent):
+        frame = self.create_section_frame(parent, "🔄 진행 상황 및 로그")
+        frame.grid_columnconfigure(0, weight=1)
+        frame.grid_rowconfigure(1, weight=1)
+        self.progress = ctk.CTkProgressBar(frame)
+        self.progress.grid(row=0, column=0, sticky="ew", padx=20, pady=5)
+        self.progress.set(0)
+        self.log_textbox = ctk.CTkTextbox(frame, state="disabled", wrap="word", font=ctk.CTkFont(family="Courier New", size=12))
+        self.log_textbox.grid(row=1, column=0, sticky="nsew", padx=20, pady=(5, 15))
+        return frame
+
+    def browse_file(self):
+        if self.is_translating: return
+        file_path = filedialog.askopenfilename(title="번역할 PDF 파일을 선택하세요", filetypes=[("PDF files", "*.pdf")])
+        if file_path:
+            self.file_path.set(file_path)
+
+    def open_api_key_url(self):
+        webbrowser.open_new_tab(self.config["api_key_help_url"])
+
+    def update_log(self, text):
+        """백그라운드 스레드에서 UI를 안전하게 업데이트하기 위한 함수입니다."""
+        self.log_textbox.configure(state="normal")
+        self.log_textbox.insert("end", text)
+        self.log_textbox.see("end")
+        self.log_textbox.configure(state="disabled")
+
+    def update_progress(self, value):
+        """스레드로부터 받은 값으로 프로그레스 바를 업데이트합니다."""
+        self.progress.set(value)
+
+    def set_ui_state(self, is_active):
+        """번역 중/완료 시 UI 상태를 변경하여 사용자 실수를 방지합니다."""
+        self.is_translating = is_active
+        state = "disabled" if is_active else "normal"
+        self.translate_btn.configure(state=state, text="번역 중..." if is_active else "🚀 번역 시작하기")
+        for widget in self.root.winfo_children():
+            if isinstance(widget, ctk.CTkFrame):
+                for child in widget.winfo_children():
+                    if child != self.translate_btn and child.master != self.progress.master:
+                        try:
+                            child.configure(state=state)
+                        except:
+                             pass
+
+    def start_translation(self):
+        """'번역 시작' 버튼 클릭 시 호출되는 메인 이벤트 핸들러입니다."""
+        if not self.file_path.get():
+            messagebox.showerror("입력 오류", "번역할 PDF 파일을 선택해주세요.")
+            return
+        if not self.api_key.get():
+            messagebox.showerror("입력 오류", "Gemini API 키를 입력해주세요.")
+            return
+        self.set_ui_state(True)
+        self.progress.set(0)
+        self.log_textbox.configure(state="normal")
+        self.log_textbox.delete("1.0", "end")
+        self.log_textbox.configure(state="disabled")
+        self.update_log("번역 프로세스를 시작합니다...\n")
+        thread = threading.Thread(target=self.run_translation_process)
+        thread.daemon = True
+        thread.start()
+
+    def run_translation_process(self):
+        """실제 번역 명령을 실행하고 실시간으로 로그와 진행률을 받아오는 핵심 로직입니다."""
+        try:
+            babeldoc_entry_point = BASE_PATH / "babeldoc" / "main.py"
+            
+            cmd = [
+                sys.executable, str(babeldoc_entry_point),
+                "--files", self.file_path.get(),
+                "--lang-out", self.target_lang.get().split()[0],
+                "--gemini",
+                "--gemini-model", self.ai_model.get(),
+                "--gemini-api-key", self.api_key.get(),
+                "--watermark-output-mode", "no_watermark",
+                "--report-interval", "1" 
+            ]
+
+            if self.output_format.get() == "mono":
+                cmd.append("--no-dual")
+            elif self.output_format.get() == "dual":
+                cmd.append("--no-mono")
+            
+            self.root.after(0, self.update_log, f"실행 명령어: {' '.join(cmd)}\n\n")
+
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
+                                       text=True, encoding='utf-8', bufsize=1, 
+                                       creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0)
+
+            for line in iter(process.stdout.readline, ''):
+                self.root.after(0, self.update_log, line)
+                
+                progress_match = re.search(r"Progress: (\d+\.\d+)%", line)
+                if progress_match:
+                    progress_percent = float(progress_match.group(1))
+                    self.root.after(0, self.update_progress, progress_percent / 100.0)
+            
+            process.stdout.close()
+            return_code = process.wait()
+
+            if return_code == 0:
+                self.root.after(0, self.update_log, "\n🎉 번역이 성공적으로 완료되었습니다!")
+                self.root.after(0, lambda: self.progress.set(1.0))
+                self.root.after(0, lambda: messagebox.showinfo("성공", "PDF 번역이 완료되었습니다!"))
+            else:
+                self.root.after(0, self.update_log, f"\n❌ 오류 발생! (종료 코드: {return_code}) 로그를 확인해주세요.")
+                self.root.after(0, lambda: messagebox.showerror("오류", "번역 중 오류가 발생했습니다. 로그를 확인해주세요."))
+
+        except Exception as e:
+            error_msg = f"\n❌ 치명적 오류 발생: {e}"
+            self.root.after(0, self.update_log, error_msg)
+            self.root.after(0, lambda: messagebox.showerror("치명적 오류", str(e)))
+        finally:
+            self.root.after(0, self.set_ui_state, False)
+
+    def run(self):
+        self.root.mainloop()
+
+if __name__ == "__main__":
+    app = PDFTranslatorGUI()
+    app.run()
+
+3.6. 포터블 EXE 빌드 (build_exe.py)
+PyInstaller를 사용하여 복잡한 Python 프로젝트를 누구나 쉽게 실행할 수 있는 단일 .exe 파일로 패키징합니다. 이 스크립트는 숨겨진 의존성을 찾아내고, 필요한 데이터 파일을 포함시키는 등 빌드 과정의 모든 복잡성을 자동화합니다.
+# build_exe.py
+
+import PyInstaller.__main__
+import shutil
+from pathlib import Path
+import os
+
+APP_NAME = "PDF번역기_남광현_Test"
+MAIN_SCRIPT = "gui/main_window.py"
+ICON_FILE = "assets/icon.ico"
+DIST_PATH = "dist"
+
+def build_portable_exe():
+    """
+    PyInstaller를 사용하여 모든 의존성을 포함하는 포터블 EXE 파일을 생성합니다.
+    BabelDOC 모듈, 데이터 파일, 숨겨진 import를 모두 처리합니다.
+    """
+    workpath = "build"
+    specpath = "."
+    
+    # 이전 빌드 과정에서 생성된 불필요한 파일들을 정리합니다.
+    if os.path.exists(DIST_PATH):
+        shutil.rmtree(DIST_PATH)
+    if os.path.exists(workpath):
+        shutil.rmtree(workpath)
+    if os.path.exists(f"{APP_NAME}.spec"):
+        os.remove(f"{APP_NAME}.spec")
+
+    print(f"🔨 PyInstaller로 '{APP_NAME}.exe' 빌드를 시작합니다...")
+
+    # PyInstaller 명령어에 전달할 인수를 리스트로 구성합니다.
+    pyinstaller_args = [
+        '--name', APP_NAME,
+        '--onefile', # 모든 것을 하나의 .exe 파일로 묶습니다.
+        '--windowed',  # GUI 애플리케이션이므로 실행 시 검은 콘솔 창이 뜨지 않도록 합니다.
+        '--icon', ICON_FILE,
+        '--distpath', DIST_PATH,
+        '--workpath', workpath,
+        '--specpath', specpath,
+        '--clean', # 빌드 전 이전 캐시를 정리합니다.
+    ]
+
+    # --- 데이터 파일 추가 ---
+    # --add-data '원본경로;대상경로' 형식으로 .exe 파일 내에 포함될 파일을 지정합니다.
+    pyinstaller_args.extend(['--add-data', 'babeldoc/assets;babeldoc/assets'])
+    pyinstaller_args.extend(['--add-data', 'config.json;.'])
+
+    # --- 숨겨진 Import 추가 ---
+    # PyInstaller가 정적 분석만으로는 찾아내지 못하는, 동적으로 로드되는 라이브러리들을 명시적으로 추가합니다.
+    # 이 부분이 누락되면 .exe 실행 시 'ModuleNotFoundError' 오류가 발생할 수 있습니다.
+    hidden_imports = [
+        'google.generativeai', 'google.ai.generativelanguage', 'google.auth',
+        'google_auth_oauthlib', 'google.api_core.bidi', 'google.api_core.client_options',
+        'google.api_core.exceptions', 'google.api_core.future', 'google.api_core.gapic_v1',
+        'google.api_core.grpc_helpers', 'google.api_core.path_template',
+        'customtkinter', 'PIL', 'darkdetect',
+        'flask', 'werkzeug', 'jinja2', 'itsdangerous', 'click',
+        'keyring.backends.Windows', 'keyring.backends.SecretService', 'keyring.backends.macOS',
+        'babeldoc', 're'
+    ]
+    for imp in hidden_imports:
+        pyinstaller_args.extend(['--hidden-import', imp])
+
+    # 빌드할 메인 스크립트 파일
+    pyinstaller_args.append(MAIN_SCRIPT)
+
+    print(f"실행 인수: {' '.join(pyinstaller_args)}")
+
+    try:
+        PyInstaller.__main__.run(pyinstaller_args)
+        print("\n" + "="*50)
+        print(f"✅ 빌드가 성공적으로 완료되었습니다!")
+        print(f"결과물은 '{os.path.abspath(DIST_PATH)}' 폴더에서 확인할 수 있습니다.")
+        print("="*50)
+    except Exception as e:
+        print("\n" + "!"*50)
+        print(f"❌ 빌드 중 오류가 발생했습니다: {e}")
+        print("!"*50)
+
+if __name__ == "__main__":
+    if not os.path.exists(ICON_FILE):
+        print(f"경고: 아이콘 파일({ICON_FILE})을 찾을 수 없습니다. 기본 아이콘으로 빌드됩니다.")
+    build_portable_exe()
+
+3.7. 의존성 파일 (requirements.txt)
+# 이 파일은 'pip install -r requirements.txt' 명령어로 프로젝트에 필요한 모든 라이브러리를 한 번에 설치할 수 있게 해줍니다.
+
+# 핵심 번역 엔진
+babeldoc>=1.0.0
+
+# Google Gemini API 통신용 라이브러리
+google-generativeai>=0.5.0
+
+# 현대적인 GUI 구현을 위한 라이브러리
+customtkinter>=5.2.2
+
+# 로컬 브릿지 서버 구현을 위한 웹 프레임워크
+Flask>=3.0.0
+
+# Python 스크립트를 .exe 파일로 빌드하기 위한 도구
+PyInstaller>=6.0.0
+
+# (선택사항) API 키를 안전하게 저장하기 위한 라이브러리
+keyring>=25.0.0
+cryptography>=42.0.0
+
+# customtkinter이 내부적으로 사용하는 이미지 처리 라이브러리
+Pillow>=10.0.0
+darkdetect>=0.8.0
